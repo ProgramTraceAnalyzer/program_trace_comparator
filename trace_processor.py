@@ -1,0 +1,33 @@
+from tracer.execution_fragment import ExecutionFragment
+from tracer.memory_sequence import MemorySequence
+from tracer.variable import Variable
+
+def get_column_values(df, column: str, nan_strategy: str = "drop", fill_value: int = 0):
+    """
+    Извлекает значения одного столбца DataFrame как numpy array.
+
+    Args:
+        df:            pandas DataFrame (результат MemorySequence.to_pd_dataframe())
+        column:        имя столбца
+        nan_strategy:  "drop"  — удалить строки с NaN (по умолчанию)
+                       "fill"  — заменить NaN на fill_value
+        fill_value:    значение для замены NaN (используется при nan_strategy="fill")
+
+    Returns:
+        numpy.ndarray[int64]
+    """
+    import numpy as np
+
+    series = df[column]
+    if nan_strategy == "drop":
+        series = series.dropna()
+    elif nan_strategy == "fill":
+        series = series.fillna(fill_value)
+    else:
+        raise ValueError(
+            f"nan_strategy должен быть 'drop' или 'fill', получено: '{nan_strategy}'"
+        )
+    return series.to_numpy(dtype=np.int64)
+
+def remove_stutter_steps_in_memory_sequence(memory_sequence: MemorySequence) -> MemorySequence:
+    pass
