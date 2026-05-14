@@ -80,7 +80,7 @@ def compare_programs(
 
 
 
-def build_executions_similarity_matrix(ef1: ExecutionFragment, ef2: ExecutionFragment, remove_death_actions: bool, strategy,
+def build_executions_similarity_matrix(ef1: ExecutionFragment, ef2: ExecutionFragment, remove_death_actions: bool, remove_stutter_steps: bool, strategy,
         nan_strategy,
         fill_value,
         **strategy_kwargs,):
@@ -107,7 +107,8 @@ def compare_programs_on_test_list(cpp_code1: str,
     func_name: str,
     test_list: List[Memory],
     remove_death_actions: bool,
-    treshold,
+    remove_stutter_steps: bool = False,
+    treshold: float = 0.6,
     strategy=None,
     nan_strategy: str = "drop",
     fill_value: int = 0,
@@ -130,11 +131,11 @@ def compare_programs_on_test_list(cpp_code1: str,
         ef1 = pg1.execute(_initial_memory=mem1, max_steps=max_steps)
         ef2 = pg2.execute(_initial_memory=mem2, max_steps=max_steps)
 
-        matrix = (build_executions_similarity_matrix(ef1, ef2, remove_death_actions, strategy, nan_strategy, fill_value,
+        matrix = (build_executions_similarity_matrix(ef1, ef2, remove_death_actions, remove_stutter_steps, strategy, nan_strategy, fill_value,
                                                   **strategy_kwargs))
-        #print(matrix)
+        print(matrix)
         mapping = hungarian_mapping(matrix, treshold)
-        #print(mapping)
+        print(mapping)
         mapping_list.append(mapping)
     result_mapping = aggregate_mappings(mapping_list,treshold)
     return result_mapping

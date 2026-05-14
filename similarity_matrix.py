@@ -1,10 +1,12 @@
 import pandas as pd
 import numpy as np
 from metrics import *
+from trace_processor import get_column_values
 
 def build_similarity_matrix(
     df1,
     df2,
+    remove_stutter_steps: bool = False,
     strategy: SequenceDistanceMeasureStrategy = None,
     nan_strategy: str = "drop",
     fill_value: int = 0,
@@ -46,10 +48,10 @@ def build_similarity_matrix(
 
     rows = {}
     for col1 in df1.columns:
-        seq1 = _get_col(df1, col1)
+        seq1 = get_column_values(df1, col1, remove_stutter_steps, nan_strategy, fill_value)#_get_col(df1, col1)
         row = {}
         for col2 in df2.columns:
-            seq2 = _get_col(df2, col2)
+            seq2 = get_column_values(df2, col2, remove_stutter_steps, nan_strategy, fill_value)
             result = strategy.do(seq1, seq2, **strategy_kwargs)
             row[col2] = round(result.similarity, 2)
         rows[col1] = row
