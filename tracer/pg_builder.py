@@ -32,6 +32,7 @@ class TACConverter:
         self.next_label_id = 0
         self.loop_stack = []
         self.curr_temp_var_id = 0
+        self.array_decls = []  # [(name, size), ...]
 
     def new_temp(self):
         name = f"t{self.temp_count}"
@@ -210,6 +211,14 @@ class TACConverter:
         elif isinstance(node, c_ast.Return):
             self.add_return(node.expr)
         elif isinstance(node, c_ast.Decl):
+            # Объявление массива: int b[10]; -> добавляем пустой массив в память
+            if isinstance(node.type, c_ast.ArrayDecl):
+                dim = node.type.dim
+                if dim is not None and isinstance(dim, c_ast.Constant):
+                    size = int(dim.value)
+                else:
+                    size = 0
+                self.array_decls.append((node.name, size))
             if node.init:
                 self.add_assignment(node.name, node.init, "=")
         elif isinstance(node, c_ast.DeclList):
@@ -364,6 +373,13 @@ def cpp_to_program_graph(
 
     if initial_memory is None:
         initial_memory = Memory()
+
+    # Добавляем массивы, объявленные внутри функции, если их нет в памяти
+    from tracer.array_class import Array
+    from tracer.array_memory import ArrayMemory
+    for arr_name, arr_size in converter.array_decls:
+        if arr_name not in initial_memory.array_memory.array_values:
+            initial_memory.array_memory.array_values[arr_name] = Array(size=arr_size)
 
     pg = ProgramGraph2(initial_memory=initial_memory, terminal_loc=final_node)
 

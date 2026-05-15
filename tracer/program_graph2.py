@@ -10,16 +10,17 @@ from tracer.state import State
 from tracer.execution_fragment import ExecutionFragment
 import copy
 
+
 class ProgramGraph2:
     def __init__(
         self,
         initial_memory: Memory = None,
         terminal_loc: int = 0,
     ):
-        # action_matrix[loc_from][loc_to] = Action
         self._action_matrix: Dict[int, Dict[int, Action]] = {}
         self._terminal_loc = terminal_loc
-        #self._initial_memory = initial_memory if initial_memory is not None else Memory()
+        # Хранит "базовую" память графа (например, пустые массивы из объявлений)
+        self._initial_memory: Memory = initial_memory if initial_memory is not None else Memory()
 
     def set_terminal_loc(self, loc: int) -> None:
         self._terminal_loc = loc
@@ -29,18 +30,34 @@ class ProgramGraph2:
             self._action_matrix[loc_from] = {}
         self._action_matrix[loc_from][loc_to] = act
 
-    def execute(self, _initial_memory : Memory, max_steps: int = 10000) -> ExecutionFragment:
+    def execute(self, _initial_memory: Memory = None, max_steps: int = 10000) -> ExecutionFragment:
+        """
+        Исполняет граф программы.
+
+        Стартовая память формируется склейкой двух источников:
+          1. self._initial_memory  — базовая память графа (содержит пустые массивы
+             из объявлений внутри функции, добавленные pg_builder-ом).
+          2. _initial_memory       — память, переданная пользователем при вызове
+             execute(); её значения имеют приоритет над базовыми.
+
+        Если _initial_memory не передан, используется только self._initial_memory.
+        """
+        # --- склейка памяти ---
+        merged = copy.deepcopy(self._initial_memory)
+
+        if _initial_memory is not None:
+            # Скалярные переменные пользователя перекрывают базовые
+            for var_name, val in _initial_memory.scalar_memory.var_values.items():
+                merged.scalar_memory.var_values[var_name] = val
+            # Массивы пользователя перекрывают базовые
+            for arr_name, arr in _initial_memory.array_memory.array_values.items():
+                merged.array_memory.array_values[arr_name] = copy.deepcopy(arr)
+
+        # --- исполнение ---
         execution_fragment = ExecutionFragment()
-        memory = Memory(
-            _initial_memory.scalar_memory.__class__(
-                dict(_initial_memory.scalar_memory.var_values)
-            ),
-            _initial_memory.array_memory.__class__(
-                dict(_initial_memory.array_memory.array_values)
-            ),
-        )
-        initial_memory_copy = copy.deepcopy(_initial_memory)
-        execution_fragment.state_sequence.states.append(State(0, initial_memory_copy))
+        memory = copy.deepcopy(merged)
+
+        execution_fragment.state_sequence.states.append(State(0, copy.deepcopy(memory)))
         current_loc = 0
         step_count = 0
         while current_loc != self._terminal_loc and step_count != max_steps:
@@ -71,7 +88,6 @@ class ProgramGraph2:
                             finger_print.assigned_variable.index,
                         )
                 execution_element.action_sequence.action_seq.append(finger_print)
-
                 mem_copy = copy.deepcopy(memory)
                 execution_element.state_sequence.states.append(State(new_loc, mem_copy))
                 return new_loc

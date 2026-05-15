@@ -5,7 +5,7 @@ from tracer.array_memory import ArrayMemory
 from tracer.memory import Memory
 from tracer.array_class import Array
 from trace_processor import get_column_values
-from metrics import LCSStrategy
+from metrics import LCSStrategy, DTWStrategy
 import sys
 
 cpp_file1 = sys.argv[1]
@@ -47,6 +47,6 @@ for test in config["test_cases"]:
 
 from compare_programs import compare_programs, compare_programs_on_test_list
 print(test_list)
-mapping = compare_programs_on_test_list(code1, code2, config["function_name"], test_list, True, True, 0.6, LCSStrategy(), "fill", -1)
+mapping = compare_programs_on_test_list(code1, code2, config["function_name"], test_list, True, True, 0.55, DTWStrategy(), "fill", -1)
 
 print(mapping)
