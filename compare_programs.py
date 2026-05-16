@@ -108,7 +108,8 @@ def compare_programs_on_test_list(cpp_code1: str,
     test_list: List[Memory],
     remove_death_actions: bool,
     remove_stutter_steps: bool = False,
-    treshold: float = 0.6,
+    treshold_mapping: float = 0.6,
+    treshold_agragation: float = 0.6,
     strategy=None,
     nan_strategy: str = "drop",
     fill_value: int = 0,
@@ -134,8 +135,8 @@ def compare_programs_on_test_list(cpp_code1: str,
         matrix = (build_executions_similarity_matrix(ef1, ef2, remove_death_actions, remove_stutter_steps, strategy, nan_strategy, fill_value,
                                                   **strategy_kwargs))
         print(matrix)
-        mapping = hungarian_mapping(matrix, treshold)
+        mapping = hungarian_mapping(matrix, treshold_mapping)
         print(mapping)
         mapping_list.append(mapping)
-    result_mapping = aggregate_mappings(mapping_list,treshold)
+    result_mapping = aggregate_mappings(mapping_list,treshold_agragation)
     return result_mapping
