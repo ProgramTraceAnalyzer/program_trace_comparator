@@ -80,7 +80,7 @@ def compare_programs(
 
 
 
-def build_executions_similarity_matrix(ef1: ExecutionFragment, ef2: ExecutionFragment, remove_death_actions: bool, remove_stutter_steps: bool, strategy,
+def build_executions_similarity_matrix(ef1: ExecutionFragment, ef2: ExecutionFragment, except_var_names: list, remove_death_actions: bool, remove_stutter_steps: bool, strategy,
         nan_strategy,
         fill_value,
         **strategy_kwargs,):
@@ -92,7 +92,9 @@ def build_executions_similarity_matrix(ef1: ExecutionFragment, ef2: ExecutionFra
 
     # Получаем последовательности памяти → DataFrame
     df1 = ef1.state_sequence.get_memory_sequence().to_pd_dataframe()
+    df1 = df1.drop(columns=except_var_names, errors="ignore")
     df2 = ef2.state_sequence.get_memory_sequence().to_pd_dataframe()
+    df2 = df2.drop(columns=except_var_names, errors="ignore")
 
     return build_similarity_matrix(
         df1, df2,
@@ -102,8 +104,59 @@ def build_executions_similarity_matrix(ef1: ExecutionFragment, ef2: ExecutionFra
         **strategy_kwargs,
     )
 
+def build_program_matrix_list_on_test_list(cpp_code1: str,
+    cpp_code2: str,
+    except_var_names: list,
+    func_name: str,
+    test_list: List[Memory],
+    remove_death_actions: bool,
+    remove_stutter_steps: bool = False,
+    strategy=None,
+    nan_strategy: str = "drop",
+    fill_value: int = 0,
+    max_steps: int = 10000,
+    **strategy_kwargs,
+    ):
+
+    matrix_list = []
+    for test in test_list:
+        if strategy is None:
+            strategy = LCSStrategy()
+
+        # Исполняем обе программы с копиями памяти (чтобы не мутировать оригинал)
+        mem1 = copy.deepcopy(test)
+        mem2 = copy.deepcopy(test)
+
+        pg1 = cpp_to_program_graph(cpp_code1, func_name=func_name)
+        pg2 = cpp_to_program_graph(cpp_code2, func_name=func_name)
+
+        ef1 = pg1.execute(_initial_memory=mem1, max_steps=max_steps)
+        ef2 = pg2.execute(_initial_memory=mem2, max_steps=max_steps)
+
+        matrix = (build_executions_similarity_matrix(ef1, ef2, except_var_names, remove_death_actions, remove_stutter_steps, strategy, nan_strategy, fill_value,
+                                                  **strategy_kwargs))
+        matrix_list.append(matrix)
+
+    return matrix_list
+
+def mapping_by_matrix_list(matrix_list: list,
+    treshold_mapping: float = 0.6,
+    treshold_agragation: float = 0.6):
+
+    mapping_list = []
+    for matrix in matrix_list:
+        print(matrix)
+        mapping = hungarian_mapping(matrix, treshold_mapping)
+        print(mapping)
+        mapping_list.append(mapping)
+    result_mapping = aggregate_mappings(mapping_list, treshold_agragation)
+    return result_mapping
+
+
+
 def compare_programs_on_test_list(cpp_code1: str,
     cpp_code2: str,
+    except_var_names: list,
     func_name: str,
     test_list: List[Memory],
     remove_death_actions: bool,
@@ -132,7 +185,7 @@ def compare_programs_on_test_list(cpp_code1: str,
         ef1 = pg1.execute(_initial_memory=mem1, max_steps=max_steps)
         ef2 = pg2.execute(_initial_memory=mem2, max_steps=max_steps)
 
-        matrix = (build_executions_similarity_matrix(ef1, ef2, remove_death_actions, remove_stutter_steps, strategy, nan_strategy, fill_value,
+        matrix = (build_executions_similarity_matrix(ef1, ef2, except_var_names, remove_death_actions, remove_stutter_steps, strategy, nan_strategy, fill_value,
                                                   **strategy_kwargs))
         print(matrix)
         mapping = hungarian_mapping(matrix, treshold_mapping)
